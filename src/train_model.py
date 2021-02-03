@@ -15,34 +15,32 @@ train_labels = []
 test_images = []
 test_labels = []
 
-FOLDER_TRAIN = './dataset/train/'
+FOLDER_TRAIN = './dataset/train'
 FOLDER_TEST = './dataset/test/'
 
-for file in os.listdir(FOLDER_TRAIN+"with_mask/"):
-    src = cv2.imread(FOLDER_TRAIN+"with_mask/"+file)
-    output = cv2.resize(src, (32,32))
+for file in os.listdir(FOLDER_TRAIN):
+    src = cv2.imread(FOLDER_TRAIN+"/"+file)
+    output = cv2.resize(src, (64,64))
     train_images.append(output)
-    train_labels.append(0)
+    if "no_mask" in file:
+        train_labels.append(1)
+    elif "bad_mask" in file:
+        train_labels.append(2)
+    else:
+        train_labels.append(0)
 
-for file in os.listdir(FOLDER_TRAIN+"without_mask/"):
-    src = cv2.imread(FOLDER_TRAIN+"without_mask/"+file)
-    output = cv2.resize(src, (32,32))
-    train_images.append(output)
-    train_labels.append(1)
-
-for file in os.listdir(FOLDER_TEST+"mask/"):
-    src = cv2.imread(FOLDER_TEST+"mask/"+file)
-    output = cv2.resize(src, (32,32))
+for file in os.listdir(FOLDER_TEST):
+    src = cv2.imread(FOLDER_TEST+"/"+file)
+    output = cv2.resize(src, (64,64))
     test_images.append(output)
-    test_labels.append(0)
+    if "no_mask" in file:
+        test_labels.append(1)
+    elif "bad_mask" in file:
+        test_labels.append(2)
+    else:
+        test_labels.append(0)
 
-for file in os.listdir(FOLDER_TEST+"no_mask/"):
-    src = cv2.imread(FOLDER_TEST+"no_mask/"+file)
-    output = cv2.resize(src, (32,32))
-    test_images.append(output)
-    test_labels.append(1)
-
-class_names = ["mask", "no mask"]
+class_names = ["mask", "no mask", "bad position"]
 
 train_labels = np.array(train_labels)
 train_images = np.array(train_images)
@@ -72,8 +70,10 @@ plt.show()
 model = models.Sequential()
 model.add(layers.Flatten(input_shape=train_images.shape[1:]))
 model.add(layers.Dense(256, activation='relu'))
-model.add(layers.Dropout(0.5))
-model.add(layers.Dense(2, activation='sigmoid'))
+model.add(layers.Dense(128, activation='relu'))
+model.add(layers.Dense(64, activation='relu'))
+model.add(layers.Dense(16, activation='relu'))
+model.add(layers.Dense(3))
 
 #Compilez le modèle
 model.compile(optimizer='adam',
@@ -84,7 +84,7 @@ log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 #Former le modèle
-model.fit(train_images, train_labels, epochs=10,
+model.fit(train_images, train_labels, epochs=7,
           validation_data=(test_images, test_labels),
           callbacks=[tensorboard_callback])
 
@@ -119,10 +119,10 @@ def plot_image(i, predictions_array, true_label, img):
 def plot_value_array(i, predictions_array, true_label):
   true_label = true_label[i]
   plt.grid(False)
-  plt.xticks(range(2))
+  plt.xticks(range(3))
   plt.yticks([])
-  thisplot = plt.bar(range(2), predictions_array, color="#777777")
-  plt.ylim([0, 1])
+  thisplot = plt.bar(range(3), predictions_array, color="#777777")
+  plt.ylim([0, 2])
   predicted_label = np.argmax(predictions_array)
 
   thisplot[predicted_label].set_color('red')
