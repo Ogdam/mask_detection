@@ -8,9 +8,6 @@ import face_recognition
 
 tf.get_logger().setLevel('ERROR')
 
-cascPath = os.path.dirname(
-    cv2.__file__) + "/data/haarcascade_frontalface_alt2.xml"
-faceCascade = cv2.CascadeClassifier(cascPath)
 video_capture = cv2.VideoCapture(0)
 
 model = models.load_model('weight/mask.model')
@@ -19,7 +16,7 @@ probability_model = tf.keras.Sequential([model])
 
 class_names = [" no mask", " mask", " bad mask position"]
 
-face_locations = None
+face_locations = []
 
 while True:
     # Capture frame-by-frame
@@ -29,7 +26,7 @@ while True:
     old_face_locations = face_locations
     face_locations = face_recognition.face_locations(frame)
 
-    if face_locations:
+    if not face_locations:
         face_locations = old_face_locations
 
     for face in face_locations:
@@ -42,6 +39,7 @@ while True:
             roi = np.array(output)
             roi = roi / 255.0
             predictions = probability_model.predict(roi)
+            print(predictions)
             predict  = np.argmax(predictions)
             if predict== 1:
                 cv2.rectangle(frame, (left, top), (right, bottom),(0,255,0), 2)
