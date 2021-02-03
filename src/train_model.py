@@ -1,5 +1,6 @@
 # TensorFlow and tf.keras
 import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
 from tensorflow.keras import datasets, layers, models
 import datetime
 import numpy as np
@@ -8,10 +9,11 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import os
 from cv2 import cv2
+import random
 
-# load_images
-train_images = []
-train_labels = []
+# ---------------------------------------- load_images -------------------------
+
+train  = []
 test_images = []
 test_labels = []
 
@@ -21,26 +23,28 @@ FOLDER_TEST = './dataset/test/'
 for file in os.listdir(FOLDER_TRAIN):
     src = cv2.imread(FOLDER_TRAIN+"/"+file)
     output = cv2.resize(src, (64,64))
-    train_images.append(output)
     if "no_mask" in file:
-        train_labels.append(1)
+        train.append((output, 0))
     elif "bad_mask" in file:
-        train_labels.append(2)
+        train.append((output, 2))
     else:
-        train_labels.append(0)
+        train.append((output, 1))
+
+random.shuffle(train)
+train_images, train_labels = zip(*train)
 
 for file in os.listdir(FOLDER_TEST):
     src = cv2.imread(FOLDER_TEST+"/"+file)
     output = cv2.resize(src, (64,64))
     test_images.append(output)
     if "no_mask" in file:
-        test_labels.append(1)
+        test_labels.append(0)
     elif "bad_mask" in file:
         test_labels.append(2)
     else:
-        test_labels.append(0)
+        test_labels.append(1)
 
-class_names = ["mask", "no mask", "bad position"]
+class_names = ["no mask", "mask", "bad mask position"]
 
 train_labels = np.array(train_labels)
 train_images = np.array(train_images)
@@ -50,28 +54,15 @@ test_labels = np.array(test_labels)
 test_images = np.array(test_images)
 test_images = test_images / 255.0
 
-print(len(test_images[0]))
-print(len(test_images[0][0]))
-print(test_images[0][0])
 
-plt.figure(figsize=(10,10))
-for i in range(25):
-    plt.subplot(5,5,i+1)
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(train_images[i], cmap=plt.cm.binary)
-    plt.xlabel(class_names[train_labels[i]])
-plt.show()
-
-
-#Construisez le modèle
-
+# -------------------------------- create model --------------------------------
 model = models.Sequential()
-model.add(layers.Flatten(input_shape=train_images.shape[1:]))
-model.add(layers.Dense(256, activation='relu'))
-model.add(layers.Dense(128, activation='relu'))
-model.add(layers.Dense(64, activation='relu'))
+model.add(layers.Conv2D(64, (3, 3), activation='relu', input_shape=(64, 64, 3)))
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model.add(layers.Flatten())
 model.add(layers.Dense(16, activation='relu'))
 model.add(layers.Dense(3))
 
@@ -84,7 +75,7 @@ log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 #Former le modèle
-model.fit(train_images, train_labels, epochs=7,
+model.fit(train_images, train_labels, epochs=10,
           validation_data=(test_images, test_labels),
           callbacks=[tensorboard_callback])
 
@@ -131,7 +122,7 @@ def plot_value_array(i, predictions_array, true_label):
 
 plt.figure()
 indexPlot=1
-for i in range(0,8):
+for i in range(0,len(test_images)):
     plt.subplot(4,6,indexPlot)
     plot_image(i, predictions[i], test_labels, test_images)
     plt.subplot(4,6,indexPlot+1)
