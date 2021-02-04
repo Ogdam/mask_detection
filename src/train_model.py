@@ -14,8 +14,7 @@ import random
 # ---------------------------------------- load_images -------------------------
 
 train  = []
-test_images = []
-test_labels = []
+test = []
 
 FOLDER_TRAIN = './dataset/train'
 FOLDER_TEST = './dataset/test/'
@@ -36,13 +35,15 @@ train_images, train_labels = zip(*train)
 for file in os.listdir(FOLDER_TEST):
     src = cv2.imread(FOLDER_TEST+"/"+file)
     output = cv2.resize(src, (64,64))
-    test_images.append(output)
     if "no_mask" in file:
-        test_labels.append(0)
+        test.append((output, 0))
     elif "bad_mask" in file:
-        test_labels.append(2)
+        test.append((output, 2))
     else:
-        test_labels.append(1)
+        test.append((output, 1))
+
+random.shuffle(test)
+test_images, test_labels = zip(*test)
 
 class_names = ["no mask", "mask", "bad mask position"]
 
@@ -69,15 +70,15 @@ model.add(layers.Dense(3))
 #Compilez le modèle
 model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-              metrics=['accuracy'])
+              metrics=['acc'])
 
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 #Former le modèle
-model.fit(train_images, train_labels, epochs=10,
-          validation_data=(test_images, test_labels),
-          callbacks=[tensorboard_callback])
+history = model.fit(train_images, train_labels, epochs=15,
+              validation_data=(test_images, test_labels),
+              callbacks=[tensorboard_callback])
 
 #Évaluer la précision
 test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
@@ -122,10 +123,31 @@ def plot_value_array(i, predictions_array, true_label):
 
 plt.figure()
 indexPlot=1
-for i in range(0,len(test_images)):
+for i in range(0,10):
     plt.subplot(4,6,indexPlot)
     plot_image(i, predictions[i], test_labels, test_images)
     plt.subplot(4,6,indexPlot+1)
     plot_value_array(i, predictions[i],  test_labels)
     indexPlot +=2
+plt.savefig('./plt/test.png')
+plt.show()
+
+# Get training and test loss histories
+training_acc = history.history['acc']
+test_acc = history.history['val_acc']
+
+training_loss = history.history['loss']
+test_loss = history.history['val_loss']
+
+# Create count of the number of epochs
+epoch_count = range(1, len(training_loss) + 1)
+# Visualize loss history
+plt.plot(epoch_count, training_loss, 'r--')
+plt.plot(epoch_count, test_loss, 'b-')
+plt.plot(epoch_count, training_acc, 'g--')
+plt.plot(epoch_count, test_acc, 'y-')
+plt.legend(['Training Loss', 'Test Loss', 'Training Accuracy', 'Test Accuracy'])
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.savefig('./plt/loss_plt.png')
 plt.show()
