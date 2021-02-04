@@ -39,7 +39,6 @@ while True:
             roi = np.array(output)
             roi = roi / 255.0
             predictions = probability_model.predict(roi)
-            print(predictions)
             predict  = np.argmax(predictions)
             if predict== 1:
                 cv2.rectangle(frame, (left, top), (right, bottom),(0,255,0), 2)

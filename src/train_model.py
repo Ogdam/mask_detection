@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import os
 from cv2 import cv2
 import random
+import png
 
 # ---------------------------------------- load_images -------------------------
 
@@ -17,7 +18,7 @@ train  = []
 test = []
 
 FOLDER_TRAIN = './dataset/train'
-FOLDER_TEST = './dataset/test/'
+FOLDER_TEST = './dataset/test'
 
 for file in os.listdir(FOLDER_TRAIN):
     src = cv2.imread(FOLDER_TRAIN+"/"+file)
@@ -45,7 +46,7 @@ for file in os.listdir(FOLDER_TEST):
 random.shuffle(test)
 test_images, test_labels = zip(*test)
 
-class_names = ["no mask", "mask", "bad mask position"]
+class_names = ["no mask", "good_mask", "bad mask position"]
 
 train_labels = np.array(train_labels)
 train_images = np.array(train_images)
@@ -72,11 +73,13 @@ model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['acc'])
 
+# model.load_weights('weight/mask.h5')
+
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 #Former le modèle
-history = model.fit(train_images, train_labels, epochs=15,
+history = model.fit(train_images, train_labels, epochs=5,
               validation_data=(test_images, test_labels),
               callbacks=[tensorboard_callback])
 
@@ -89,6 +92,15 @@ predictions = probability_model.predict(test_images)
 
 model.save_weights('./weight/mask.h5')
 model.save('./weight/mask.model')
+
+# add false positif to train set:
+# for i in range(0, len(test_images)-1):
+#     true_label, img = test_labels[i], test_images[i]
+#     predicted_label = np.argmax(predictions[i])
+#     if predicted_label != true_label :
+#         newName = '{}.{}.jpg'.format(len(os.listdir(FOLDER_TEST)), class_names[true_label])
+#         os.rename(FOLDER_TEST+"/"+os.listdir(FOLDER_TEST)[i], FOLDER_TRAIN+"/"+newName)
+#         i = i-1
 
 
 def plot_image(i, predictions_array, true_label, img):
@@ -123,7 +135,7 @@ def plot_value_array(i, predictions_array, true_label):
 
 plt.figure()
 indexPlot=1
-for i in range(0,10):
+for i in range(0,12):
     plt.subplot(4,6,indexPlot)
     plot_image(i, predictions[i], test_labels, test_images)
     plt.subplot(4,6,indexPlot+1)
